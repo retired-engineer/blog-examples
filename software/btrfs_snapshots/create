@@ -1,0 +1,62 @@
+###########################################################################
+# Copyright (c) 2025   retired-engineer.com
+#
+# This script demonstrates that the BTRFS subvolume snapshot feature
+# efficiently manages disk usage by using Copy-on-Write.
+#
+# A detailed explanation of this script is provided at:
+#    https://www.retired-engineer.com/posts/software/btrfs_snapshots/
+#
+###########################################################################
+
+#!/bin/bash
+
+# Echo commands (preceded by +) to terminal when script executes
+set -x
+
+# Create 10 GB image file to hold BTRFS file system
+truncate -s 10GB test.img
+
+# Create BTRFS filesystem within image file
+mkfs.btrfs test.img
+
+# Create BTRFS filesystem mount point called "mnt" within current directory
+mkdir -p mnt
+
+# Mount BTRFS image (requires root privileges) into "mnt"
+sudo mount -o loop test.img mnt
+
+# Create two BTRFS subvolumes -- a volume for working files and
+# a volume for snapshots
+sudo btrfs subvolume create mnt/working
+sudo btrfs subvolume create mnt/snapshots
+
+# Create four test files in working directory with size 50M, 100M, 250M, 500M
+sudo dd if=/dev/random of=mnt/working/file1 bs=1M count=50
+sudo dd if=/dev/random of=mnt/working/file2 bs=1M count=100
+sudo dd if=/dev/random of=mnt/working/file3 bs=1M count=250
+sudo dd if=/dev/random of=mnt/working/file4 bs=1M count=500
+
+# Create snapshot of working directory.
+# Dump filesystem size before and after snapshot
+# NOTE: Snapshot requires only a small amount of additional space
+sync; df -h /dev/loop?
+sudo btrfs subvolume snapshot -r mnt/working mnt/snapshots/`date -I`
+sync; df -h /dev/loop?
+
+# List BTRFS subvolumes underneath "mnt"
+sudo btrfs subvolume list mnt
+
+# Change contents of "file4"
+sudo dd if=/dev/random of=mnt/working/file4 bs=1M count=500
+
+# Dump filesystem size after modifying file
+sync; df -h /dev/loop?
+
+# Restore "file4" from snapshot
+sudo cp mnt/snapshots/`date -I`/file4 mnt/working
+
+# Dump filesystem size after restoring file
+sync; df -h /dev/loop?
+
+

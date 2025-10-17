@@ -1,0 +1,17 @@
+###########################################################################
+# Copyright (c) 2025   retired-engineer.com
+###########################################################################
+
+#!/bin/bash
+
+# Echo commands (preceded by +) to terminal when script executes
+set -x
+
+# Unmount BTRFS file system disk image created by "create" script
+sudo umount mnt
+
+# Delete mount point
+sudo rm -r mnt
+
+# Delete BTRFS file system disk image
+rm test.img
